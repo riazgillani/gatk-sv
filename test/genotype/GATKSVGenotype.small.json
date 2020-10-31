@@ -1,0 +1,11 @@
+{
+  "GATKSVGenotype.batch" : "ref_panel_1kg_v1_small",
+  "GATKSVGenotype.vcf" : "gs://broad-sv-dev-data/markw/ref_panel_1kg_v1_small.clustered.rd.vcf.gz",
+  "GATKSVGenotype.sample_coverage_file" : "gs://broad-sv-dev-data/markw/ref_panel_1kg_v1.small.melt_coverage.tsv",
+  "GATKSVGenotype.records_per_shard" : "2000",
+
+  "GATKSVGenotype.genotyping_gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:f7c45fbc222b4313c50aa9feb0760e25f97361da",
+  "GATKSVGenotype.sharding_gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:f7c45fbc222b4313c50aa9feb0760e25f97361da",
+
+  "GATKSVGenotype.sv_base_mini_docker" : "us.gcr.io/broad-dsde-methods/gatk-sv/sv-base-mini:mw-gnomad-02-cdd8b4e"
+}
