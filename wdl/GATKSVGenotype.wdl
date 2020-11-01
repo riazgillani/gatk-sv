@@ -201,7 +201,6 @@ task SVGenotype {
     gatk --java-options -Xmx~{java_mem_mb}M SVGenotype \
       -V ~{vcf} \
       --output ~{output_vcf_filename} \
-      --intermediates-dir . \
       --predictive-samples ~{predictive_samples} \
       --discrete-samples ~{discrete_samples} \
       --model-name ~{model_name} \

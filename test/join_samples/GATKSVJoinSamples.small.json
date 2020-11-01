@@ -67,6 +67,7 @@
   "GATKSVJoinSamples.sr_file" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/v1/module00c_output/ref_panel_1kg_v1.SR.txt.gz",
   "GATKSVJoinSamples.pe_file" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/v1/module00c_output/ref_panel_1kg_v1.PE.txt.gz",
   "GATKSVJoinSamples.sample_coverage_file" : "gs://broad-sv-dev-data/markw/ref_panel_1kg_v1.small.melt_coverage.tsv",
+  "GATKSVJoinSamples.gatk_sv_cluster_exclude_intervals" : "gs://broad-sv-dev-data/markw/gatk-sv-v2.1kgp.cluster_exclude.bed",
   "GATKSVJoinSamples.exclude_intervals" : "gs://gatk-sv-resources/resources/PESR.enconde.peri_all.repeats.delly.hg38.blacklist.bed.gz",
   "GATKSVJoinSamples.ploidy_calls_tar" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/gcnv/ref_panel_1kg_v1-contig-ploidy-calls.tar.gz",
 

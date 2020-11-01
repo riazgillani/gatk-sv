@@ -17,6 +17,7 @@ workflow GATKSVJoinSamples {
     File sr_file
     File pe_file
     File sample_coverage_file
+    File gatk_sv_cluster_exclude_intervals
     File exclude_intervals
     File ploidy_calls_tar
 
@@ -197,6 +198,7 @@ workflow GATKSVJoinSamples {
       pe_file = pe_file,
       pe_index = pe_index_,
       sample_coverage_file = sample_coverage_file,
+      gatk_sv_cluster_exclude_intervals = gatk_sv_cluster_exclude_intervals,
       exclude_intervals = exclude_intervals,
       exclude_intervals_index = exclude_intervals_index_,
       ref_fasta_dict = ref_fasta_dict,
@@ -412,6 +414,7 @@ task ClusterVariants {
     File pe_file
     File pe_index
     File sample_coverage_file
+    File gatk_sv_cluster_exclude_intervals
     File exclude_intervals
     File exclude_intervals_index
     File ref_fasta_dict
@@ -443,6 +446,7 @@ task ClusterVariants {
     ~{gatk_path} --java-options "-Xmx~{java_mem_mb}m" SVCluster \
       -V ~{calls_file} \
       -O ~{batch}.clustered.vcf.gz \
+      -XL ~{gatk_sv_cluster_exclude_intervals} \
       -XL ~{exclude_intervals} \
       --sequence-dictionary ~{ref_fasta_dict} \
       --split-reads-file ~{sr_file} \
