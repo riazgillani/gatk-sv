@@ -6,16 +6,19 @@ workflow GATKSVGenotype {
   input {
     File vcf
     File sample_coverage_file
-    Int records_per_shard = 1000
+    Int records_per_shard = 2000
     String batch
 
     String genotyping_gatk_docker
     String sharding_gatk_docker
     String sv_base_mini_docker
 
-    String device = "cuda"
+    # cpu or cuda
+    String device_train = "cpu"
+    String device_genotype = "cpu"
+
     String gpu_type = "nvidia-tesla-k80"
-    String nvidia_driver_version = "418.87.00"
+    String nvidia_driver_version = "450.80.02"
 
     RuntimeAttr? runtime_attr_split
     RuntimeAttr? runtime_attr_shard
@@ -55,10 +58,9 @@ workflow GATKSVGenotype {
           sample_coverage_file = sample_coverage_file,
           model_name = model_name,
           gatk_docker = genotyping_gatk_docker,
-          device = device,
+          device = device_train,
           gpu_type = gpu_type,
-          nvidia_driver_version = nvidia_driver_version,
-          runtime_attr_override = runtime_attr_train
+          nvidia_driver_version = nvidia_driver_version
       }
       call SVGenotype {
         input:
@@ -67,10 +69,9 @@ workflow GATKSVGenotype {
           model_name = model_name,
           output_vcf_filename = "~{model_name}.genotyped.vcf.gz",
           gatk_docker = genotyping_gatk_docker,
-          device = device,
+          device = device_genotype,
           gpu_type = gpu_type,
-          nvidia_driver_version = nvidia_driver_version,
-          runtime_attr_override = runtime_attr_infer
+          nvidia_driver_version = nvidia_driver_version
       }
     }
   }
@@ -100,10 +101,10 @@ task SVTrainGenotyping {
     File sample_coverage_file
     String model_name
     String gatk_docker
-    String device = "cuda"
+    String device
     Int? max_iter
-    String gpu_type = "nvidia-tesla-k80"
-    String nvidia_driver_version = "418.87.00"
+    String gpu_type
+    String nvidia_driver_version
     RuntimeAttr? runtime_attr_override
   }
 
@@ -122,11 +123,10 @@ task SVTrainGenotyping {
 
   output {
     File out = "~{model_name}.svgenotype_model.tar.gz"
+    Array[File] journals = glob("gatkStreamingProcessJournal-*.txt")
   }
   command <<<
-
     set -euo pipefail
-    source activate gatk
     mkdir svmodel
     tabix ~{vcf}
 
@@ -137,7 +137,8 @@ task SVTrainGenotyping {
       --output-dir svmodel \
       --device ~{device} \
       --jit \
-      ~{"--max-iter " + max_iter}
+      ~{"--max-iter " + max_iter} \
+      --enable-journal
 
     tar czf ~{model_name}.sv_genotype_model.tar.gz svmodel/*
   >>>
@@ -149,10 +150,10 @@ task SVTrainGenotyping {
     docker: gatk_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-    gpuCount: 1
-    gpuType: gpu_type
-    nvidiaDriverVersion: nvidia_driver_version
-    zones: "us-east1-d us-east1-c us-central1-a us-central1-c us-west1-b"
+    #gpuCount: 1
+    #gpuType: gpu_type
+    #nvidiaDriverVersion: nvidia_driver_version
+    #zones: "us-east1-d us-east1-c us-central1-a us-central1-c us-west1-b"
   }
 }
 
@@ -165,9 +166,9 @@ task SVGenotype {
     String model_name
     String output_vcf_filename
     String gatk_docker
-    String device = "cuda"
-    String gpu_type = "nvidia-tesla-k80"
-    String nvidia_driver_version = "418.87.00"
+    String device
+    String gpu_type
+    String nvidia_driver_version
     RuntimeAttr? runtime_attr_override
   }
 
@@ -187,6 +188,7 @@ task SVGenotype {
   output {
     File out = "~{output_vcf_filename}"
     File out_index = "~{output_vcf_filename}.tbi"
+    Array[File] journals = glob("gatkStreamingProcessJournal-*.txt")
   }
   command <<<
 
@@ -204,7 +206,9 @@ task SVGenotype {
       --discrete-samples ~{discrete_samples} \
       --model-name ~{model_name} \
       --model-dir svmodel \
-      --jit
+      --device ~{device} \
+      --jit \
+      --enable-journal
   >>>
   runtime {
     cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
@@ -214,10 +218,10 @@ task SVGenotype {
     docker: gatk_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-    gpuCount: 1
-    gpuType: gpu_type
-    nvidiaDriverVersion: nvidia_driver_version
-    zones: "us-east1-d us-east1-c us-central1-a us-central1-c us-west1-b"
+    #gpuCount: 1
+    #gpuType: gpu_type
+    #nvidiaDriverVersion: nvidia_driver_version
+    #zones: "us-east1-d us-east1-c us-central1-a us-central1-c us-west1-b"
   }
 }
 

@@ -36,7 +36,7 @@ workflow GATKSVJoinSamples {
     String sv_pipeline_base_docker
     String gcnv_gatk_docker
     String gatk_docker
-    File condense_counts_docker
+    String condense_counts_docker
 
     RuntimeAttr? runtime_attr_merge
     RuntimeAttr? runtime_attr_small_intervals
