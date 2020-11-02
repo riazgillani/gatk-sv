@@ -101,7 +101,7 @@
     "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/gcnv/genotyped_intervals/genotyped-intervals-HG00349.vcf.gz"
   ],
 
-  "GATKSVJoinSamples.gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:97c2297b6e3b30171bd96f0cba817853cc404863",
+  "GATKSVJoinSamples.gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:cfce14a0033403c37beb9d2b47f0cae86eb4448d",
   "GATKSVJoinSamples.gcnv_gatk_docker": "us.gcr.io/broad-gatk/gatk:4.1.8.1",
 
   "GATKSVJoinSamples.sv_base_mini_docker" : "us.gcr.io/broad-dsde-methods/gatk-sv/sv-base-mini:mw-gnomad-02-cdd8b4e",

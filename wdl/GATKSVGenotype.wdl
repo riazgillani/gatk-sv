@@ -40,6 +40,7 @@ workflow GATKSVGenotype {
   Array[String] svtypes = ["DEL", "DUP", "INS", "BND"]
 
   scatter (svtype in svtypes) {
+    String shard_name = batch + "." + svtype
     call ShardVcf {
       input:
         vcf = SplitDepthCalls.out_pesr,
@@ -51,7 +52,7 @@ workflow GATKSVGenotype {
         runtime_attr_override = runtime_attr_shard
     }
     scatter (i in range(length(ShardVcf.out))) {
-      String model_name = batch + ".shard_" + i
+      String model_name = shard_name + ".shard_" + i
       call SVTrainGenotyping {
         input:
           vcf = ShardVcf.out[i],
@@ -110,11 +111,11 @@ task SVTrainGenotyping {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1,
-    mem_gb: 15,
-    disk_gb: 100,
-    boot_disk_gb: 20,
-    preemptible_tries: 0,
-    max_retries: 0
+    mem_gb: 3.75,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
@@ -122,7 +123,7 @@ task SVTrainGenotyping {
   Int java_mem_mb = ceil(mem_gb * 1000 * 0.8)
 
   output {
-    File out = "~{model_name}.svgenotype_model.tar.gz"
+    File out = "~{model_name}.sv_genotype_model.tar.gz"
     Array[File] journals = glob("gatkStreamingProcessJournal-*.txt")
   }
   command <<<
@@ -174,10 +175,10 @@ task SVGenotype {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1,
-    mem_gb: 15,
-    disk_gb: 100,
-    boot_disk_gb: 20,
-    preemptible_tries: 0,
+    mem_gb: 7.5,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
     max_retries: 0
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
