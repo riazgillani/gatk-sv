@@ -2,6 +2,7 @@ version 1.0
 
 import "GermlineCNVCohort.wdl" as gcnv
 import "CollectCoverage.wdl" as cov
+import "GATKSVGenotype.wdl" as svg
 
 workflow GATKSVJoinSamples {
   input {
@@ -19,8 +20,10 @@ workflow GATKSVJoinSamples {
     File sample_coverage_file
     File gatk_sv_cluster_exclude_intervals
     File exclude_intervals
+    File contig_list
     File ploidy_calls_tar
 
+    Int min_depth_only_size = 5000
     Int? small_cnv_size
     Int? small_cnv_padding
 
@@ -40,6 +43,8 @@ workflow GATKSVJoinSamples {
     String condense_counts_docker
 
     RuntimeAttr? runtime_attr_merge
+    RuntimeAttr? runtime_attr_filter_depth
+    RuntimeAttr? runtime_attr_concat
     RuntimeAttr? runtime_attr_small_intervals
     RuntimeAttr? runtime_attr_intersect_intervals
     RuntimeAttr? runtime_attr_counts_to_intervals
@@ -186,29 +191,51 @@ workflow GATKSVJoinSamples {
       runtime_attr_override = runtime_attr_merge
   }
 
-  # TODO: shard VCF using single-linkage clustering (not single-linked => not max-clique)
-  # TODO: single-linkage clustering can be sharded by chromosome arm
+  Array[String] contigs = read_lines(contig_list)
 
-  call ClusterVariants {
+  scatter (contig in contigs) {
+    call ClusterVariants {
+      input:
+        calls_file = MergeSVCalls.out,
+        calls_file_index = MergeSVCalls.out_index,
+        contig = contig,
+        sr_file = sr_file,
+        sr_index = sr_index_,
+        pe_file = pe_file,
+        pe_index = pe_index_,
+        sample_coverage_file = sample_coverage_file,
+        gatk_sv_cluster_exclude_intervals = gatk_sv_cluster_exclude_intervals,
+        exclude_intervals = exclude_intervals,
+        exclude_intervals_index = exclude_intervals_index_,
+        ref_fasta_dict = ref_fasta_dict,
+        batch = batch + "." + contig,
+        gatk_docker = gatk_docker,
+        runtime_attr_override = runtime_attr_cluster
+    }
+  }
+
+  call svg.ConcatVcfs {
     input:
-      calls_file = MergeSVCalls.out,
-      calls_file_index = MergeSVCalls.out_index,
-      sr_file = sr_file,
-      sr_index = sr_index_,
-      pe_file = pe_file,
-      pe_index = pe_index_,
-      sample_coverage_file = sample_coverage_file,
-      gatk_sv_cluster_exclude_intervals = gatk_sv_cluster_exclude_intervals,
-      exclude_intervals = exclude_intervals,
-      exclude_intervals_index = exclude_intervals_index_,
-      ref_fasta_dict = ref_fasta_dict,
-      batch = batch,
+      vcfs = ClusterVariants.out,
+      vcfs_idx = ClusterVariants.out_index,
+      merge_sort = true,
+      outfile_prefix = "~{batch}.clustered",
+      sv_base_mini_docker = sv_base_mini_docker,
+      runtime_attr_override = runtime_attr_concat
+  }
+
+  call FilterDepthOnlyBySize {
+    input:
+      vcf = ConcatVcfs.out,
+      vcf_index = ConcatVcfs.out_index,
+      size = min_depth_only_size,
+      basename = batch,
       gatk_docker = gatk_docker,
-      runtime_attr_override = runtime_attr_cluster
+      runtime_attr_override = runtime_attr_filter_depth
   }
 
   scatter (i in range(length(samples))) {
-    call cov.CondenseReadCounts as CondenseReadCounts {
+    call cov.CondenseReadCounts {
       input:
         counts = counts[i],
         sample = samples[i],
@@ -221,8 +248,8 @@ workflow GATKSVJoinSamples {
 
   call SmallCNVIntervals {
     input:
-      vcf = ClusterVariants.out,
-      vcf_index = ClusterVariants.out_index,
+      vcf = FilterDepthOnlyBySize.out,
+      vcf_index = FilterDepthOnlyBySize.out_index,
       ref_fasta_fai = ref_fasta_fai,
       size = small_cnv_size,
       padding = small_cnv_padding,
@@ -325,8 +352,8 @@ workflow GATKSVJoinSamples {
 
   call CopyNumberPosteriors {
     input:
-      vcf = ClusterVariants.out,
-      vcf_index = ClusterVariants.out_index,
+      vcf = FilterDepthOnlyBySize.out,
+      vcf_index = FilterDepthOnlyBySize.out_index,
       gcnv_intervals_vcfs = [MergeLargeCNVVcfs.out, MergeSmallCNVVcfs.out],
       gcnv_intervals_vcf_indexes = [MergeLargeCNVVcfs.out_index, MergeSmallCNVVcfs.out_index],
       ploidy_calls_tar = ploidy_calls_tar,
@@ -409,6 +436,7 @@ task ClusterVariants {
   input {
     File calls_file
     File calls_file_index
+    String contig
     File sr_file
     File sr_index
     File pe_file
@@ -422,6 +450,18 @@ task ClusterVariants {
     String gatk_path = "/gatk/gatk"
     String gatk_docker
     RuntimeAttr? runtime_attr_override
+  }
+
+  parameter_meta {
+    calls_file: {
+      localization_optional: true
+    }
+    sr_file: {
+      localization_optional: true
+    }
+    pe_file: {
+      localization_optional: true
+    }
   }
 
   RuntimeAttr default_attr = object {
@@ -446,6 +486,7 @@ task ClusterVariants {
     ~{gatk_path} --java-options "-Xmx~{java_mem_mb}m" SVCluster \
       -V ~{calls_file} \
       -O ~{batch}.clustered.vcf.gz \
+      -L ~{contig} \
       -XL ~{gatk_sv_cluster_exclude_intervals} \
       -XL ~{exclude_intervals} \
       --sequence-dictionary ~{ref_fasta_dict} \
@@ -749,6 +790,55 @@ task ShardVcf {
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
     docker: sv_pipeline_base_docker
+    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+  }
+}
+
+
+task FilterDepthOnlyBySize {
+  input {
+    File vcf
+    File vcf_index
+    Int size
+    String basename
+    String gatk_docker
+    RuntimeAttr? runtime_attr_override
+  }
+
+  RuntimeAttr default_attr = object {
+    cpu_cores: 1,
+    mem_gb: 3.75,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
+  }
+  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+  Float mem_gb = select_first([runtime_attr.mem_gb, default_attr.mem_gb])
+  Int java_mem_mb = ceil(mem_gb * 1000 * 0.8)
+
+  output {
+    File out = "~{basename}.depth_filtered.vcf.gz"
+    File out_index = "~{basename}.depth_filtered.vcf.gz.tbi"
+  }
+  command <<<
+
+    set -euo pipefail
+    gatk --java-options -Xmx~{java_mem_mb}M SelectVariants \
+      -V ~{vcf} \
+      -O ~{basename}.depth_filtered.vcf.gz \
+      -select "ALGORITHMS == 'depth' && SVLEN <= ~{size}" \
+      --invertSelect
+
+  >>>
+  runtime {
+    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+    docker: gatk_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

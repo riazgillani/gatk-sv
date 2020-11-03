@@ -69,6 +69,7 @@
   "GATKSVJoinSamples.sample_coverage_file" : "gs://broad-sv-dev-data/markw/ref_panel_1kg_v1.small.melt_coverage.tsv",
   "GATKSVJoinSamples.gatk_sv_cluster_exclude_intervals" : "gs://broad-sv-dev-data/markw/gatk-sv-v2.1kgp.cluster_exclude.bed",
   "GATKSVJoinSamples.exclude_intervals" : "gs://gatk-sv-resources/resources/PESR.enconde.peri_all.repeats.delly.hg38.blacklist.bed.gz",
+  "GATKSVJoinSamples.contig_list": "gs://gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/primary_contigs.list",
   "GATKSVJoinSamples.ploidy_calls_tar" : "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/gcnv/ref_panel_1kg_v1-contig-ploidy-calls.tar.gz",
 
   "GATKSVJoinSamples.small_cnv_size" : "5000",
@@ -101,7 +102,7 @@
     "gs://gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/gcnv/genotyped_intervals/genotyped-intervals-HG00349.vcf.gz"
   ],
 
-  "GATKSVJoinSamples.gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:cfce14a0033403c37beb9d2b47f0cae86eb4448d",
+  "GATKSVJoinSamples.gatk_docker": "us.gcr.io/broad-dsde-methods/markw/gatk:8a603cb048ca5bb58f4350943efc66665b83a93c",
   "GATKSVJoinSamples.gcnv_gatk_docker": "us.gcr.io/broad-gatk/gatk:4.1.8.1",
 
   "GATKSVJoinSamples.sv_base_mini_docker" : "us.gcr.io/broad-dsde-methods/gatk-sv/sv-base-mini:mw-gnomad-02-cdd8b4e",
