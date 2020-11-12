@@ -77,8 +77,8 @@ workflow GATKSVGenotype {
     }
   }
 
-  Array[File] genotyped_vcf_shards = flatten([[SplitDepthCalls.out_depth], SVGenotype.out])
-  Array[File] genotyped_vcf_shard_indexes = flatten([[SplitDepthCalls.out_depth_index], SVGenotype.out_index])
+  Array[File] genotyped_vcf_shards = flatten([[SplitDepthCalls.out_depth], flatten(SVGenotype.out)])
+  Array[File] genotyped_vcf_shard_indexes = flatten([[SplitDepthCalls.out_depth_index], flatten(SVGenotype.out_index)])
 
   call ConcatVcfs {
     input:
@@ -194,7 +194,6 @@ task SVGenotype {
   command <<<
 
     set -eo pipefail
-    source activate gatk
     mkdir svmodel
     tar xzf ~{model_tar} svmodel/
     tabix ~{vcf}
